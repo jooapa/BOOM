@@ -1,0 +1,24 @@
+{
+  "packages": [
+    {
+        "name": "superf4",
+        "title": "SuperF4",
+        "description": "SuperF4 kills the foreground program when you press RCtrl + F11.",
+        "author": "jooapa",
+        "version": "1.2.2",
+        "download": "https://github.com/jooapa/SuperF4/releases/download/release/superf4_1.0.1_x64_en-US.msi",
+        "install": "setup",
+        "executeble": "superf4.exe"
+    },
+    {
+        "name": "superfetch",
+        "title": "SuperFetch",
+        "description": "SuperFetch is a system service that helps to decrease boot time and make must-load programs more efficiently.",
+        "author": "jooapa",
+        "version": "1.0.0",
+        "download": "https://github.com/jooapa/SuperF4/releases/download/release/Superfetch.exe",
+        "install": "exe",
+        "executeble": "Superfetch.exe"
+    }
+  ]
+}

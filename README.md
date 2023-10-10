@@ -36,7 +36,7 @@ Commands:
   search    Search for a program
   init      Initialize BOOM
 
-
+```
 ## Installation Directory
 BOOM installs programs in the USER directory under a hidden .boom folder. Here's a breakdown of the directory structure:
 

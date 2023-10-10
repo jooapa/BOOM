@@ -8,7 +8,7 @@
         "version": "1.2.2",
         "download": "https://github.com/jooapa/SuperF4/releases/download/release/superf4_1.0.1_x64_en-US.msi",
         "install": "setup",
-        "executeble": "superf4.exe"
+        "executeble": "superf4_1.0.1_x64_en-US.msi"
     },
     {
         "name": "superfetch",

@@ -8,11 +8,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/schollz/progressbar/v3"
 )
+
+var install_type = ""
+var executable_name = ""
 
 func main() {
 	// if no args, print usage
@@ -26,7 +32,8 @@ func main() {
 		fmt.Println("  update    update a program")
 		fmt.Println("  list      list all programs installed")
 		fmt.Println("  search    search a program")
-		fmt.Println("  init	     initialize a program")
+		fmt.Println("  init	     initialize BOOM")
+
 		return
 	}
 
@@ -101,7 +108,30 @@ func install() {
 							return
 						}
 
-						fmt.Printf("Package '%s' installed successfully.\n", package_name)
+						fmt.Printf("Package '%s' installed successfully. with '%s' \n", package_name, install_type)
+
+						//get current user
+						currentUser, err := user.Current()
+						if err != nil {
+							fmt.Println("Error:", err)
+							return
+						}
+
+						//get the full path to the executable
+						executablePath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name, executable_name)
+						directoryPatch := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name)
+						if install_type == "exe" {
+						} else if install_type == "setup" {
+							cmd := exec.Command("msiexec", "/i", "\""+executablePath+"\"", "/qb+", "INSTALLDIR=\""+directoryPatch+"\"")
+							cmd.Stdout = os.Stdout
+							cmd.Stderr = os.Stderr
+							fmt.Println("Executing command:", cmd.String())
+							err = cmd.Run()
+							if err != nil {
+								fmt.Println("Error:", err)
+								return
+							}
+						}
 						return
 					}
 				}
@@ -147,7 +177,43 @@ func update() {
 }
 
 func list() {
+	// Get the current user
+	currentUser, err := user.Current()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
+	// Path to the installed.json file
+	installedFile := currentUser.HomeDir + "/.boom/installed.json"
+
+	// Open and read the JSON file
+	jsonFile, err := os.Open(installedFile)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer jsonFile.Close()
+
+	// Decode the JSON data into a map
+	var installedData map[string][]map[string]interface{}
+	decoder := json.NewDecoder(jsonFile)
+	if err := decoder.Decode(&installedData); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Loop through the data and print the "name" property
+	for _, programs := range installedData {
+		for _, program := range programs {
+			name, exists := program["name"].(string)
+			if exists {
+				fmt.Println(name)
+			} else {
+				fmt.Println("Name not found for program:", program)
+			}
+		}
+	}
 }
 
 func search() {
@@ -352,12 +418,19 @@ func isInstalled(packageName string) bool {
 	return false
 }
 
+type ProgressBar struct {
+	Current int64
+	Total   int64
+	Width   int
+}
+
 func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 	name, nameOk := packageInfo["name"].(string)
 	downloadURL, downloadOk := packageInfo["download"].(string)
 	installType, installTypeOk := packageInfo["install"].(string)
+	executeble, executebleOk := packageInfo["executeble"].(string)
 
-	if !nameOk || !downloadOk || !installTypeOk {
+	if !nameOk || !downloadOk || !installTypeOk || !executebleOk {
 		return fmt.Errorf("invalid package information")
 	}
 
@@ -393,8 +466,23 @@ func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 	}
 	defer file.Close()
 
-	// Copy the downloaded data to the file
-	_, err = io.Copy(file, response.Body)
+	// Get the content length for the progress bar
+	contentLength := response.ContentLength
+
+	// Create a progress bar
+	bar := progressbar.NewOptions64(
+		contentLength,
+		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionSetWidth(30),
+		progressbar.OptionSetDescription("Downloading"),
+	)
+
+	// Create a proxy reader to track the download progress
+	customReader := &CustomProgressBarReader{reader: &progressbar.Reader{}}
+	*customReader.reader = progressbar.NewReader(response.Body, bar)
+
+	// Copy the downloaded data to the file with progress tracking
+	_, err = io.Copy(file, customReader)
 	if err != nil {
 		return err
 	}
@@ -406,14 +494,8 @@ func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 		}
 	}
 
-	if installType == "setup" {
-		println("setup its not implemented yet")
-	}
-
-	if installType == "zip" {
-		println("zip its not implemented yet")
-	}
-
+	install_type = installType
+	executable_name = executeble
 	return nil
 }
 
@@ -524,4 +606,13 @@ func prettifyInstalledJSON() error {
 
 	fmt.Println("installed.json prettified successfully.")
 	return nil
+}
+
+// CustomProgressBarReader wraps progressbar.Reader and implements io.Reader
+type CustomProgressBarReader struct {
+	reader *progressbar.Reader
+}
+
+func (cpr *CustomProgressBarReader) Read(p []byte) (n int, err error) {
+	return cpr.reader.Read(p)
 }

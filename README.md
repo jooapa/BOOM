@@ -38,10 +38,11 @@ Commands:
 
 ```
 ## Installation Directory
-BOOM installs programs in the USER directory under a hidden .boom folder. Here's a breakdown of the directory structure:
 
-~/.boom/ - This is the main BOOM directory located in the user's home directory.
+BOOM installs programs in the USER directory under a hidden .boom folder *( if using linux )*. Here's a breakdown of the directory structure:
 
-installed.json - This JSON file keeps track of all the programs installed using BOOM. It contains information about the installed programs, such as their names, versions, and installation paths.
+**~/.boom/** - This is the main BOOM directory located in the user's home directory.
 
-programs/ - This directory stores the actual software programs that you install using BOOM. Each program has its own subdirectory here.
+**installed.json** - This JSON file keeps track of all the programs installed using BOOM. It contains information about the installed programs, such as their names, versions, and installation paths.
+
+**programs/** - This directory stores the actual software programs that you install using BOOM. Each program has its own subdirectory here.

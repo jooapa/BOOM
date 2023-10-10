@@ -36,3 +36,12 @@ Commands:
   search    Search for a program
   init      Initialize BOOM
 
+
+## Installation Directory
+BOOM installs programs in the USER directory under a hidden .boom folder. Here's a breakdown of the directory structure:
+
+~/.boom/ - This is the main BOOM directory located in the user's home directory.
+
+installed.json - This JSON file keeps track of all the programs installed using BOOM. It contains information about the installed programs, such as their names, versions, and installation paths.
+
+programs/ - This directory stores the actual software programs that you install using BOOM. Each program has its own subdirectory here.

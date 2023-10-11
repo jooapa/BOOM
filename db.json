@@ -19,6 +19,16 @@
         "download": "https://github.com/jooapa/SuperF4/releases/download/release/Superfetch.exe",
         "install": "exe",
         "executeble": "Superfetch.exe"
+    },
+    {
+        "name": "speedcrunch",
+        "title": "SpeedCrunch",
+        "description": "SpeedCrunch is a high-precision scientific calculator featuring a fast, keyboard-driven user interface.",
+        "author": "heldercorreia",
+        "version": "0.12",
+        "download": "https://bitbucket.org/heldercorreia/speedcrunch/downloads/SpeedCrunch-0.12-win32.zip",
+        "install": "zip",
+        "executeble": "speedcrunch.exe"
     }
   ]
 }

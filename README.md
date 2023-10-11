@@ -1,10 +1,10 @@
 # BOOM Package Manager
 
-BOOM is a simple package manager for managing software on your system. It provides commands to handle the installation, execution, and maintenance of programs.
+BOOM is a simple package manager for managing software on your system. It provides commands to handle the installation, execution and maintenance of programs.
 
 ## Installation
 
-To use BOOM, you'll need to install it on your system. Here's how:
+To use BOOM you'll need to install it on your system. Here's how:
 
 1. **Download the Binary:**
    - Visit the [BOOM Releases](https://github.com/jooapa/boom/releases) page on GitHub.
@@ -35,6 +35,7 @@ Commands:
   list      List all installed programs
   search    Search for a program
   init      Initialize BOOM
+  start     open BOOM in File Explorer
 
 ```
 ## Installation Directory

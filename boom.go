@@ -2,9 +2,11 @@
 package main
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +21,7 @@ import (
 
 var install_type = ""
 var executable_name = ""
+var installed_file_name = ""
 
 func main() {
 	// if no args, print usage
@@ -33,6 +36,7 @@ func main() {
 		fmt.Println("  list      list all programs installed")
 		fmt.Println("  search    search a program")
 		fmt.Println("  init	     initialize BOOM")
+		fmt.Println("  start     open .boom directory in file explorer")
 
 		return
 	}
@@ -57,13 +61,94 @@ func main() {
 		search()
 	case "init":
 		initialize()
+	case "start":
+		// Get the current user
+		currentUser, err := user.Current()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		// open .boom directory in file explorer
+		cmd := exec.Command("explorer", currentUser.HomeDir+"\\.boom")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		fmt.Println("Executing command:", cmd.String())
+		err = cmd.Run()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
 	default:
 		fmt.Println("Unknown command:", cmd, "\n", "Run 'boom' for usage.")
 	}
 }
 
 func run() {
-	fmt.Println("run")
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: boom run <package>")
+		return
+	}
+
+	// Get the current user
+	currentUser, err := user.Current()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Path to the installed.json file
+	installedFile := currentUser.HomeDir + "/.boom/installed.json"
+
+	// Open and read the JSON file
+	jsonFile, err := os.Open(installedFile)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer jsonFile.Close()
+
+	// get the package name from the command-line arguments
+	package_name := os.Args[2]
+
+	// get package_name property name and executeble property name
+	var package_name_property_name string
+	var executeble_property_name string
+
+	// Decode the JSON data into a map
+	var installedData map[string][]map[string]interface{}
+	decoder := json.NewDecoder(jsonFile)
+	if err := decoder.Decode(&installedData); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Loop through the data and print the "name" property
+	for _, programs := range installedData {
+		for _, program := range programs {
+			name, exists := program["name"].(string)
+			if exists {
+				if name == package_name {
+					package_name_property_name = name
+					executeble_property_name = program["executeble"].(string)
+				}
+			} else {
+				fmt.Println("Name not found for program:", program)
+			}
+		}
+	}
+
+	// goto the package directory using the package name and run the executeble in the directory
+	directoryPatch := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name_property_name)
+	executablePath := filepath.Join(directoryPatch, executeble_property_name)
+	cmd := exec.Command(executablePath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	fmt.Println("Executing command:", cmd.String())
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 }
 
 func install() {
@@ -119,10 +204,15 @@ func install() {
 
 						//get the full path to the executable
 						executablePath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name, executable_name)
-						directoryPatch := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name)
+						directoryPath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name)
+						zipPath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name, installed_file_name)
+						// make a new varible for the zipped folder name
+						zipppedFolderName := strings.TrimSuffix(installed_file_name, filepath.Ext(installed_file_name))
+						zippedPath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name, zipppedFolderName)
+
 						if install_type == "exe" {
 						} else if install_type == "setup" {
-							cmd := exec.Command("msiexec", "/i", "\""+executablePath+"\"", "/qb+", "INSTALLDIR=\""+directoryPatch+"\"")
+							cmd := exec.Command("msiexec", "/i", "\""+executablePath+"\"", "/qb+", "INSTALLDIR=\""+directoryPath+"\"")
 							cmd.Stdout = os.Stdout
 							cmd.Stderr = os.Stderr
 							fmt.Println("Executing command:", cmd.String())
@@ -131,6 +221,23 @@ func install() {
 								fmt.Println("Error:", err)
 								return
 							}
+						} else if install_type == "zip" {
+							// Unzip the package
+							if err := Unzip(zipPath, directoryPath); err != nil {
+								fmt.Println("Error unzipping package:", err)
+							}
+
+							// Remove the zip file
+							if err := os.Remove(zipPath); err != nil {
+								fmt.Println("Error removing zip file:", err)
+							}
+							// move the content of the zipped folder to the directorypath
+							err = moveFileContentsToParentDir(zippedPath)
+							if err != nil {
+								fmt.Println("Error moving file contents to parent directory:", err)
+							}
+						} else {
+							fmt.Println("Unknown install type:", install_type)
 						}
 						return
 					}
@@ -264,7 +371,7 @@ func search() {
 }
 
 func version() {
-	fmt.Println("BOOM version 0.0.1")
+	fmt.Println("BOOM version 0.0.2 ")
 }
 
 func initialize() {
@@ -458,7 +565,8 @@ func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 		return err
 	}
 	defer response.Body.Close()
-
+	// get the package donwload name
+	installed_file_name = originalFileName
 	// Create a new file to save the downloaded package
 	file, err := os.Create(executablePath)
 	if err != nil {
@@ -615,4 +723,95 @@ type CustomProgressBarReader struct {
 
 func (cpr *CustomProgressBarReader) Read(p []byte) (n int, err error) {
 	return cpr.reader.Read(p)
+}
+
+func Unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	os.MkdirAll(dest, 0755)
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := rc.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			os.MkdirAll(filepath.Dir(path), f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					panic(err)
+				}
+			}()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, f := range r.File {
+		err := extractAndWriteFile(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func moveFileContentsToParentDir(sourceDir string) error {
+	// get the parent directory
+	parentDir := filepath.Dir(sourceDir)
+
+	// get the files in the source directory
+	files, err := ioutil.ReadDir(sourceDir)
+	if err != nil {
+		return err
+	}
+
+	// move the files to the parent directory
+	for _, file := range files {
+		err := os.Rename(filepath.Join(sourceDir, file.Name()), filepath.Join(parentDir, file.Name()))
+		if err != nil {
+			return err
+		}
+	}
+
+	// remove the source directory
+	err = os.Remove(sourceDir)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

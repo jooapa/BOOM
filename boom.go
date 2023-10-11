@@ -19,6 +19,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+var url = "https://jooapa.akonpelto.net/db.json"
 var install_type = ""
 var executable_name = ""
 var installed_file_name = ""
@@ -412,8 +413,6 @@ func initialize() {
 }
 
 func getJson() map[string]interface{} {
-	url := "https://jooapa.akonpelto.net/db.json"
-
 	// Send an HTTP GET request to the URL
 	resp, err := http.Get(url)
 	if err != nil {

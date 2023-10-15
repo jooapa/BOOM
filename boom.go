@@ -19,13 +19,15 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-var url = "https://jooapa.akonpelto.net/db.json"
+const url = "https://jooapa.akonpelto.net/db.json"
+
+var currentUser, err = user.Current()
+
 var install_type = ""
 var executable_name = ""
 var installed_file_name = ""
 
 func main() {
-	// if no args, print usage
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: boom <command> [arguments]")
 		fmt.Println("Commands:")
@@ -40,6 +42,11 @@ func main() {
 		fmt.Println("  start     open .boom directory in file explorer")
 
 		return
+	}
+
+	result := checkInit()
+	if !result && os.Args[1] != "init" {
+		initialize()
 	}
 
 	// command
@@ -63,37 +70,27 @@ func main() {
 	case "init":
 		initialize()
 	case "start":
-		// Get the current user
-		currentUser, err := user.Current()
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		// open .boom directory in file explorer
-		cmd := exec.Command("explorer", currentUser.HomeDir+"\\.boom")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		fmt.Println("Executing command:", cmd.String())
-		err = cmd.Run()
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
+		start()
 	default:
 		fmt.Println("Unknown command:", cmd, "\n", "Run 'boom' for usage.")
+	}
+}
+
+func start() {
+	cmd := exec.Command("explorer", currentUser.HomeDir+"\\.boom")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	fmt.Println("Executing command:", cmd.String())
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
 	}
 }
 
 func run() {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: boom run <package>")
-		return
-	}
-
-	// Get the current user
-	currentUser, err := user.Current()
-	if err != nil {
-		fmt.Println("Error:", err)
 		return
 	}
 
@@ -196,13 +193,6 @@ func install() {
 
 						fmt.Printf("Package '%s' installed successfully. with '%s' \n", package_name, install_type)
 
-						//get current user
-						currentUser, err := user.Current()
-						if err != nil {
-							fmt.Println("Error:", err)
-							return
-						}
-
 						//get the full path to the executable
 						executablePath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name, executable_name)
 						directoryPath := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name)
@@ -285,13 +275,6 @@ func update() {
 }
 
 func list() {
-	// Get the current user
-	currentUser, err := user.Current()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
 	// Path to the installed.json file
 	installedFile := currentUser.HomeDir + "/.boom/installed.json"
 
@@ -376,13 +359,6 @@ func version() {
 }
 
 func initialize() {
-	// Get the current user
-	currentUser, err := user.Current()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
 	// Create the .boom directory in the user's home directory
 	err = os.Mkdir(currentUser.HomeDir+"/.boom", 0755)
 	if err != nil {
@@ -436,11 +412,6 @@ func getJson() map[string]interface{} {
 }
 
 func addToInstalled(packageInfo map[string]interface{}) error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-
 	// Read installed.json
 	installedFile := currentUser.HomeDir + "/.boom/installed.json"
 	installedData := make(map[string][]map[string]interface{})
@@ -480,12 +451,6 @@ func addToInstalled(packageInfo map[string]interface{}) error {
 
 // Check if a package is already installed
 func isInstalled(packageName string) bool {
-	currentUser, err := user.Current()
-	if err != nil {
-		// Handle the error, e.g., by returning false or logging it
-		return false
-	}
-
 	installedFile := currentUser.HomeDir + "/.boom/installed.json"
 
 	// Check if installed.json exists
@@ -538,11 +503,6 @@ func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 
 	if !nameOk || !downloadOk || !installTypeOk || !executebleOk {
 		return fmt.Errorf("invalid package information")
-	}
-
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
 	}
 
 	// Create a directory for the package in .boom/programs
@@ -607,11 +567,6 @@ func downloadAndInstallPackage(packageInfo map[string]interface{}) error {
 }
 
 func uninstallPackage(packageName string) error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-
 	// Create the full path to the package directory
 	packageDir := fmt.Sprintf("%s/.boom/programs/%s", currentUser.HomeDir, packageName)
 
@@ -624,11 +579,6 @@ func uninstallPackage(packageName string) error {
 }
 
 func removefromInstalled(packageName string) error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-
 	installedFile := currentUser.HomeDir + "/.boom/installed.json"
 
 	// Check if installed.json exists
@@ -680,11 +630,6 @@ func removefromInstalled(packageName string) error {
 }
 
 func prettifyInstalledJSON() error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return err
-	}
-
 	installedFile := currentUser.HomeDir + "/.boom/installed.json"
 
 	// Read installed.json
@@ -813,4 +758,12 @@ func moveFileContentsToParentDir(sourceDir string) error {
 	}
 
 	return nil
+}
+
+func checkInit() bool {
+	// if .boom directory does not exist
+	if _, err := os.Stat(currentUser.HomeDir + "/.boom"); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }

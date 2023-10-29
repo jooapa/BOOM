@@ -36,7 +36,7 @@
         "title": "ATK",
         "description": "File encryptor",
         "author": "Antonako1",
-        "version": "1.2.1",
+        "version": "1.2.2",
         "download": "https://github.com/Antonako1/ATK/releases/download/Hotfix-1.2.2/ATK.exe",
         "install": "exe",
         "executeble": "ATK.exe"

@@ -19,7 +19,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-const url = "https://jooapa.akonpelto.net/db.json"
+const url = "https://raw.githubusercontent.com/jooapa/BOOM/main/db.json"
 
 var currentUser, err = user.Current()
 

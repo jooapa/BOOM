@@ -138,12 +138,21 @@ func run() {
 	// goto the package directory using the package name and run the executeble in the directory
 	directoryPatch := filepath.Join(currentUser.HomeDir, ".boom", "programs", package_name_property_name)
 	executablePath := filepath.Join(directoryPatch, executeble_property_name)
-	cmd := exec.Command(executablePath)
+	cmd := exec.Command(executablePath, os.Args[3:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	fmt.Println("Executing command:", cmd.String())
 	err = cmd.Run()
 	if err != nil {
+		// if error is exit status 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			// get the exit status
+			exitStatus := exitError.ExitCode()
+			// if exit status is 1
+			if exitStatus == 1 {
+				return
+			}
+		}
 		fmt.Println("Error:", err)
 		return
 	}
@@ -442,9 +451,9 @@ func addToInstalled(packageInfo map[string]interface{}) error {
 		return err
 	}
 
-	if err := prettifyInstalledJSON(); err != nil {
-		fmt.Println("Error prettifying installed.json:", err)
-	}
+	// if err := prettifyInstalledJSON(); err != nil {
+	// 	fmt.Println("Error prettifying installed.json:", err)
+	// }
 
 	return nil
 }
